@@ -7,8 +7,7 @@ from .serializers import ProductSerializer, CartItemSerializer, OrderSerializer
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
-    # Uncomment below to restrict to admin only
-    # permission_classes = [permissions.IsAdminUser]
+
 
 class CartViewSet(viewsets.ModelViewSet):
     serializer_class = CartItemSerializer
@@ -35,7 +34,7 @@ class OrderViewSet(viewsets.ViewSet):
         if not cart_items.exists():
             return Response({"detail": "Cart is empty."}, status=400)
 
-        # Check stock
+       
         for item in cart_items:
             if item.quantity > item.product.stock:
                 return Response(
@@ -43,7 +42,7 @@ class OrderViewSet(viewsets.ViewSet):
                     status=400
                 )
 
-        # Create order
+        
         order = Order.objects.create(user=user)
         for item in cart_items:
             OrderItem.objects.create(order=order, product=item.product, quantity=item.quantity)
