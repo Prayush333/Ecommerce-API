@@ -12,15 +12,15 @@ class Product(models.Model):
     
     class CartItem(models.Model):
         user = models.ForeignKey(User, on_delete=models.CASCADE)
-        product = models.ForeignKey(Product, on_delete=models.CASCADE)
+        product = models.ForeignKey('Product', on_delete=models.CASCADE)
         quantity = models.PositiveIntegerField()
 
     class Order(models.Model):
         user = models.ForeignKey(User, on_delete=models.CASCADE)
         ordered_at = models.DateTimeField(auto_now_add=True)
 
-    class OrderItem (models.model):
-        order = models.ForeignKey(Order, related_name = 'items', on_delete=models.CASCADE)
-        product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    class OrderItem (models.Model):
+        order = models.ForeignKey('Order', related_name = 'items', on_delete=models.CASCADE)
+        product = models.ForeignKey('Product', on_delete=models.CASCADE)
         quantity = models.PositiveIntegerField()
 
