@@ -1,8 +1,10 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from django.db import transaction
 from .models import Product, CartItem, Order, OrderItem
 from .serializers import ProductSerializer, CartItemSerializer, OrderSerializer
+
 
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
@@ -19,12 +21,13 @@ class CartViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
-class OrderViewSet(viewsets.ViewSet):
+
+class OrderViewSet(viewsets.ModelViewSet):
+    serializer_class = OrderSerializer
     permission_classes = [permissions.IsAuthenticated]
 
-    def list(self, request):
-        orders = Order.objects.filter(user=request.user)
-        return Response(OrderSerializer(orders, many=True).data)
+    def get_queryset(self):
+        return Order.objects.filter(user=self.request.user)
 
     @action(detail=False, methods=['post'])
     def place_order(self, request):
@@ -32,23 +35,22 @@ class OrderViewSet(viewsets.ViewSet):
         cart_items = CartItem.objects.filter(user=user)
 
         if not cart_items.exists():
-            return Response({"detail": "Cart is empty."}, status=400)
+            return Response({"detail": "Cart is empty."}, status=status.HTTP_400_BAD_REQUEST)
 
-       
         for item in cart_items:
             if item.quantity > item.product.stock:
                 return Response(
                     {"detail": f"Not enough stock for {item.product.name}"},
-                    status=400
+                    status=status.HTTP_400_BAD_REQUEST
                 )
 
-        
-        order = Order.objects.create(user=user)
-        for item in cart_items:
-            OrderItem.objects.create(order=order, product=item.product, quantity=item.quantity)
-            item.product.stock -= item.quantity
-            item.product.save()
-            item.delete()
+        with transaction.atomic():
+            order = Order.objects.create(user=user)
+            for item in cart_items:
+                OrderItem.objects.create(order=order, product=item.product, quantity=item.quantity)
+                item.product.stock -= item.quantity
+                item.product.save()
+                item.delete()
 
-        return Response({"detail": "Order placed successfully."}, status=201)
-
+        serializer = self.get_serializer(order, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
